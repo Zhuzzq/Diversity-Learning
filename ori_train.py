@@ -5,7 +5,7 @@ from tensorflow import keras
 from keras.preprocessing.image import ImageDataGenerator
 import datetime
 import sys
-from diversity_models import H_module
+from diversity_models import H_Model, better0_H, betterH1, resnet_v1, resnet_v2, H_module
 
 
 print("TensorFlow version: ", tf.__version__)
@@ -32,10 +32,8 @@ test_ds = tf.data.Dataset.from_tensor_slices((x_test, test_labels)).batch(batch_
 print(len(train_ds))
 
 
-# learning configures
-pretrain = int(sys.argv[1])
+data_augmentation = int(sys.argv[1])
 max_episode = int(sys.argv[2])
-print(pretrain)
 
 loss_object = tf.keras.losses.SparseCategoricalCrossentropy()
 optimizer = tf.keras.optimizers.Adam()
@@ -86,13 +84,69 @@ test_accuracy.reset_states()
 
 epoch = 0
 
-transfer_cut = 5
+
 cur_time = datetime.datetime.now().strftime('%Y%m%d-%H%M%S')
-if pretrain:
-    train_log_dir = '../logs/fit/' + cur_time + 'pre'
-else:
-    train_log_dir = '../logs/fit/' + cur_time + 'ori'
+train_log_dir = '../logs/fit/' + cur_time + 'ori'
 summary_writer = tf.summary.create_file_writer(train_log_dir)
+
+
+if data_augmentation:
+    # datagen = ImageDataGenerator(
+    #     featurewise_center=False,  # set input mean to 0 over the dataset
+    #     samplewise_center=False,  # set each sample mean to 0
+    #     featurewise_std_normalization=False,  # divide inputs by std of the dataset
+    #     samplewise_std_normalization=False,  # divide each input by its std
+    #     zca_whitening=False,  # apply ZCA whitening
+    #     rotation_range=0,  # randomly rotate images in the range (degrees, 0 to 180)
+    #     width_shift_range=0.1,  # randomly shift images horizontally (fraction of total width)
+    #     height_shift_range=0.1,  # randomly shift images vertically (fraction of total height)
+    #     horizontal_flip=True,  # randomly flip images
+    #     vertical_flip=False,  # randomly flip images
+    # )
+    datagen = ImageDataGenerator(
+        # set input mean to 0 over the dataset
+        featurewise_center=False,
+        # set each sample mean to 0
+        samplewise_center=False,
+        # divide inputs by std of dataset
+        featurewise_std_normalization=False,
+        # divide each input by its std
+        samplewise_std_normalization=False,
+        # apply ZCA whitening
+        zca_whitening=False,
+        # epsilon for ZCA whitening
+        zca_epsilon=1e-06,
+        # randomly rotate images in the range (deg 0 to 180)
+        rotation_range=0,
+        # randomly shift images horizontally
+        width_shift_range=0.1,
+        # randomly shift images vertically
+        height_shift_range=0.1,
+        # set range for random shear
+        shear_range=0.,
+        # set range for random zoom
+        zoom_range=0.,
+        # set range for random channel shifts
+        channel_shift_range=0.,
+        # set mode for filling points outside the input boundaries
+        fill_mode='nearest',
+        # value used for fill_mode = "constant"
+        cval=0.,
+        # randomly flip images
+        horizontal_flip=True,
+        # randomly flip images
+        vertical_flip=False,
+        # set rescaling factor (applied before any other transformation)
+        rescale=None,
+        # set function that will be applied on each input
+        preprocessing_function=None,
+        # image data format, either "channels_first" or "channels_last"
+        data_format=None,
+        # fraction of images reserved for validation (strictly between 0 and 1)
+        validation_split=0.0)
+    datagen.fit(x_train)
+    train_ds = datagen.flow(x_train, train_labels, batch_size=batch_size)
+    print('after aug:{}'.format(len(train_ds)))
 
 for episode in range(max_episode):
     for images, labels in train_ds:
@@ -120,9 +174,6 @@ for episode in range(max_episode):
             summary_writer.flush()
             template = 'Epoch {}, Loss: {}, Accuracy: {}, Test Loss: {}, Test Accuracy: {}'
             print(template.format(epoch, train_loss.result(), train_accuracy.result() * 100, test_loss.result(), test_accuracy.result() * 100))
-    if pretrain:
-        h.save('./models/pre/{}/h_epoch{}'.format(cur_time, epoch))
-        if episode >= transfer_cut:
+        if epoch % len(train_ds) == 0:
             break
-    else:
-        h.save('./models/ori/{}/h_epoch{}'.format(cur_time, epoch))
+    h.save('./models/ori/{}/h_epoch{}'.format(cur_time, epoch))
