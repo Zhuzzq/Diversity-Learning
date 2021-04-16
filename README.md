@@ -2,9 +2,9 @@
 
 Diversity framework provides a space-time weighting scheme for ensemble learning.
 
-The $2\times 1$ scheme is implemented.
+The 2×1 scheme is implemented.
 
-<img src="D:\ZZQ\Github\diversity learning\framework.png" alt="framework" style="zoom:47%;" />
+![img](https://github.com/Zhuzzq/Diversity-Learning/blob/master/framework.png)
 
 ### Run
 
